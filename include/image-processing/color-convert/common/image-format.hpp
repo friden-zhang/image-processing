@@ -6,7 +6,7 @@
 #include <strings.h>
 #include <type_traits>
 
-#include "image-processing/color-convert/format/vector-type.hpp"
+#include "image-processing/color-convert/common/vector-type.hpp"
 
 namespace image_processing {
 

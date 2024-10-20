@@ -1,4 +1,4 @@
-#include "image-processing/color-convert/format/image-format.hpp"
+#include "image-processing/color-convert/common/image-format.hpp"
 #include <gtest/gtest.h>
 
 using namespace image_processing::color_convert;
