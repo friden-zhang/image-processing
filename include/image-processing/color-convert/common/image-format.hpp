@@ -19,16 +19,16 @@ namespace color_convert {
  *
  * There are also a variety of helper functions available that provide info
  * about each format at runtime - for example, the pixel bit depth
- * (ImageFormatDepth()) the number of image channels (ImageFormatChannels()),
- * and computing the size of an image from it's dimensions (@see
- * ImageFormatSize()).  To convert between image formats using the GPU, there is
- * also the cudaConvertColor() function.
+ * (image_format_depth()) the number of image channels
+ * (image_format_channels()), and computing the size of an image from it's
+ * dimensions (@see image_format_size()).  To convert between image formats
+ * using the GPU, there is also the cudaConvertColor() function.
  *
  * In addition to the enums below, each format can also be identified by a
  * string. The string corresponding to each format is included in the
  * documentation below. These strings are more commonly used from Python, but
- * can also be used from C++ with the ImageFormatFromStr() and
- * ImageFormatToStr() functions.
+ * can also be used from C++ with the image_format_from_str() and
+ * image_format_to_str() functions.
  *
  * @ingroup ImageFormat
  */
@@ -75,7 +75,8 @@ enum class ImageFormat {
  * ImageFormat - either uint8 or float.  For example, the IMAGE_RGB8
  * format has a base type of uint8, while IMAGE_RGB32F is float.
  *
- * You can retrieve the base type of each format with ImageFormatBaseType()
+ * You can retrieve the base type of each format with
+ * image_format_to_base_type()
  *
  * @ingroup ImageFormat
  */
@@ -86,7 +87,7 @@ enum class ImageBaseType { IMAGE_UINT8, IMAGE_FLOAT };
  * @see ImageBaseType
  * @ingroup ImageFormat
  */
-inline ImageBaseType ImageFormatBaseType(ImageFormat format) {
+inline ImageBaseType image_format_to_base_type(ImageFormat format) {
   switch (format) {
   case ImageFormat::IMAGE_GRAY32F:
   case ImageFormat::IMAGE_RGB32F:
@@ -104,7 +105,7 @@ inline ImageBaseType ImageFormatBaseType(ImageFormat format) {
  * @see ImageFormat for the strings that correspond to each format.
  * @ingroup ImageFormat
  */
-inline const char *ImageFormatToStr(ImageFormat format) {
+inline const char *image_format_to_str(ImageFormat format) {
   switch (format) {
   case ImageFormat::IMAGE_RGB8:
     return "rgb8";
@@ -158,7 +159,7 @@ inline const char *ImageFormatToStr(ImageFormat format) {
  * @see ImageFormat for the strings that correspond to each format.
  * @ingroup ImageFormat
  */
-inline ImageFormat ImageFormatFromStr(const char *str) {
+inline ImageFormat image_format_from_str(const char *str) {
   if (!str)
     return ImageFormat::IMAGE_UNKNOWN;
 
@@ -166,7 +167,7 @@ inline ImageFormat ImageFormatFromStr(const char *str) {
        n++) {
     const ImageFormat fmt = (ImageFormat)n;
 
-    if (strcasecmp(str, ImageFormatToStr(fmt)) == 0)
+    if (strcasecmp(str, image_format_to_str(fmt)) == 0)
       return fmt;
   }
 
@@ -190,7 +191,7 @@ inline ImageFormat ImageFormatFromStr(const char *str) {
  * @param format
  * @return size_t
  */
-inline size_t ImageFormatChannels(ImageFormat format) {
+inline size_t image_format_channels(ImageFormat format) {
   switch (format) {
   case ImageFormat::IMAGE_RGB8:
   case ImageFormat::IMAGE_RGB32F:
@@ -229,7 +230,7 @@ inline size_t ImageFormatChannels(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool ImageFormatIsRGB(ImageFormat format) {
+inline bool image_format_is_rgb(ImageFormat format) {
   // if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F
   // || format == IMAGE_RGBA32F ) 	return true;
   if (format >= ImageFormat::IMAGE_RGB8 && format <= ImageFormat::IMAGE_RGBA32F)
@@ -245,7 +246,7 @@ inline bool ImageFormatIsRGB(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool ImageFormatIsBGR(ImageFormat format) {
+inline bool image_format_is_bgr(ImageFormat format) {
   if (format >= ImageFormat::IMAGE_BGR8 && format <= ImageFormat::IMAGE_BGRA32F)
     return true;
 
@@ -259,7 +260,7 @@ inline bool ImageFormatIsBGR(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool ImageFormatIsYUV(ImageFormat format) {
+inline bool image_format_is_yuv(ImageFormat format) {
   if (format >= ImageFormat::IMAGE_YUYV && format <= ImageFormat::IMAGE_NV12)
     return true;
 
@@ -273,7 +274,7 @@ inline bool ImageFormatIsYUV(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool ImageFormatIsGray(ImageFormat format) {
+inline bool image_format_is_gray(ImageFormat format) {
   if (format == ImageFormat::IMAGE_GRAY8 ||
       format == ImageFormat::IMAGE_GRAY32F)
     return true;
@@ -288,7 +289,7 @@ inline bool ImageFormatIsGray(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool ImageFormatIsBayer(ImageFormat format) {
+inline bool image_format_is_bayer(ImageFormat format) {
   if (format >= ImageFormat::IMAGE_BAYER_BGGR &&
       format <= ImageFormat::IMAGE_BAYER_RGGB)
     return true;
@@ -302,7 +303,7 @@ inline bool ImageFormatIsBayer(ImageFormat format) {
  * @param format
  * @return size_t
  */
-inline size_t ImageFormatDepth(ImageFormat format) {
+inline size_t image_format_depth(ImageFormat format) {
 
   switch (format) {
   case ImageFormat::IMAGE_RGB8:
@@ -348,31 +349,32 @@ inline size_t ImageFormatDepth(ImageFormat format) {
  * @param height
  * @return size_t
  */
-inline size_t ImageFormatSize(ImageFormat format, size_t width, size_t height) {
-  return (width * height * ImageFormatDepth(format)) / 8;
+inline size_t image_format_size(ImageFormat format, size_t width,
+                                size_t height) {
+  return (width * height * image_format_depth(format)) / 8;
 }
 
 template <typename T> struct __image_format_assert_false : std::false_type {};
 
-template <typename T> inline ImageFormat ImageFormatFromType() {
+template <typename T> inline ImageFormat image_format_from_type() {
   static_assert(__image_format_assert_false<T>::value,
                 "invalid image format type - supported types are uchar3, "
                 "uchar4, float3, float4");
 }
 
-template <> inline ImageFormat ImageFormatFromType<uchar3>() {
+template <> inline ImageFormat image_format_from_type<uchar3>() {
   return ImageFormat::IMAGE_RGB8;
 }
 
-template <> inline ImageFormat ImageFormatFromType<uchar4>() {
+template <> inline ImageFormat image_format_from_type<uchar4>() {
   return ImageFormat::IMAGE_RGBA8;
 }
 
-template <> inline ImageFormat ImageFormatFromType<float3>() {
+template <> inline ImageFormat image_format_from_type<float3>() {
   return ImageFormat::IMAGE_RGB32F;
 }
 
-template <> inline ImageFormat ImageFormatFromType<float4>() {
+template <> inline ImageFormat image_format_from_type<float4>() {
   return ImageFormat::IMAGE_RGBA32F;
 }
 
