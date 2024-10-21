@@ -87,7 +87,7 @@ enum class ImageBaseType { IMAGE_UINT8, IMAGE_FLOAT };
  * @see ImageBaseType
  * @ingroup ImageFormat
  */
-inline ImageBaseType image_format_to_base_type(ImageFormat format) {
+static inline ImageBaseType image_format_to_base_type(ImageFormat format) {
   switch (format) {
   case ImageFormat::IMAGE_GRAY32F:
   case ImageFormat::IMAGE_RGB32F:
@@ -105,7 +105,7 @@ inline ImageBaseType image_format_to_base_type(ImageFormat format) {
  * @see ImageFormat for the strings that correspond to each format.
  * @ingroup ImageFormat
  */
-inline const char *image_format_to_str(ImageFormat format) {
+static inline const char *image_format_to_str(ImageFormat format) {
   switch (format) {
   case ImageFormat::IMAGE_RGB8:
     return "rgb8";
@@ -159,7 +159,7 @@ inline const char *image_format_to_str(ImageFormat format) {
  * @see ImageFormat for the strings that correspond to each format.
  * @ingroup ImageFormat
  */
-inline ImageFormat image_format_from_str(const char *str) {
+static inline ImageFormat image_format_from_str(const char *str) {
   if (!str)
     return ImageFormat::IMAGE_UNKNOWN;
 
@@ -191,7 +191,7 @@ inline ImageFormat image_format_from_str(const char *str) {
  * @param format
  * @return size_t
  */
-inline size_t image_format_channels(ImageFormat format) {
+static inline size_t image_format_channels(ImageFormat format) {
   switch (format) {
   case ImageFormat::IMAGE_RGB8:
   case ImageFormat::IMAGE_RGB32F:
@@ -230,7 +230,7 @@ inline size_t image_format_channels(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool image_format_is_rgb(ImageFormat format) {
+static inline bool image_format_is_rgb(ImageFormat format) {
   // if( format == IMAGE_RGB8 || format == IMAGE_RGBA8 || format == IMAGE_RGB32F
   // || format == IMAGE_RGBA32F ) 	return true;
   if (format >= ImageFormat::IMAGE_RGB8 && format <= ImageFormat::IMAGE_RGBA32F)
@@ -246,7 +246,7 @@ inline bool image_format_is_rgb(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool image_format_is_bgr(ImageFormat format) {
+static inline bool image_format_is_bgr(ImageFormat format) {
   if (format >= ImageFormat::IMAGE_BGR8 && format <= ImageFormat::IMAGE_BGRA32F)
     return true;
 
@@ -260,7 +260,7 @@ inline bool image_format_is_bgr(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool image_format_is_yuv(ImageFormat format) {
+static inline bool image_format_is_yuv(ImageFormat format) {
   if (format >= ImageFormat::IMAGE_YUYV && format <= ImageFormat::IMAGE_NV12)
     return true;
 
@@ -274,7 +274,7 @@ inline bool image_format_is_yuv(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool image_format_is_gray(ImageFormat format) {
+static inline bool image_format_is_gray(ImageFormat format) {
   if (format == ImageFormat::IMAGE_GRAY8 ||
       format == ImageFormat::IMAGE_GRAY32F)
     return true;
@@ -289,7 +289,7 @@ inline bool image_format_is_gray(ImageFormat format) {
  * @return true
  * @return false
  */
-inline bool image_format_is_bayer(ImageFormat format) {
+static inline bool image_format_is_bayer(ImageFormat format) {
   if (format >= ImageFormat::IMAGE_BAYER_BGGR &&
       format <= ImageFormat::IMAGE_BAYER_RGGB)
     return true;
@@ -303,7 +303,7 @@ inline bool image_format_is_bayer(ImageFormat format) {
  * @param format
  * @return size_t
  */
-inline size_t image_format_depth(ImageFormat format) {
+static inline size_t image_format_depth(ImageFormat format) {
 
   switch (format) {
   case ImageFormat::IMAGE_RGB8:
@@ -349,8 +349,8 @@ inline size_t image_format_depth(ImageFormat format) {
  * @param height
  * @return size_t
  */
-inline size_t image_format_size(ImageFormat format, size_t width,
-                                size_t height) {
+static inline size_t image_format_size(ImageFormat format, size_t width,
+                                       size_t height) {
   return (width * height * image_format_depth(format)) / 8;
 }
 

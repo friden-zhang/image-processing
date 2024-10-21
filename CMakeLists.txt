@@ -3,5 +3,8 @@ project(ImageProcessing)
 
 include_directories(include)
 
+
+add_subdirectory(src/color-convert)
+
 add_subdirectory(tests)
 
