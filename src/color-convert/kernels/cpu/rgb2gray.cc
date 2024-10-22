@@ -2,6 +2,7 @@
 #include "image-processing/color-convert/common/vector-type.hpp"
 #include <array>
 #include <assert.h>
+#include <iostream>
 #include <stddef.h>
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
@@ -101,6 +102,17 @@ bool rgb_2_gray_simd(const unsigned char *input, unsigned char *output,
     // jest throw away the high bits, >= 256 will be 0
     uint8x8_t gray_vec = vmovn_u16(gray_sum);
     vst1_u8(output + index, gray_vec);
+  }
+
+  for (; index < pixel_count; ++index) {
+    // Each pixel in RGB is represented by three consecutive bytes: R, G, B
+    unsigned char r = input[index * 3];     // Red
+    unsigned char g = input[index * 3 + 1]; // Green
+    unsigned char b = input[index * 3 + 2]; // Blue
+    // Convert to grayscale using the luminosity method
+    unsigned char gray = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
+
+    output[index] = gray; // Set the output pixel to the grayscale value
   }
 
 #else
