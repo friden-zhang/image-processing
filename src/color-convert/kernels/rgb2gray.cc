@@ -8,20 +8,50 @@ namespace color_convert {
 
 namespace kernels {
 bool rgb_2_gray(const unsigned char *input, unsigned char *output, int width,
-                int height, AlgoType algo_type) {
+                int height, AlgoType algo_type, MemLayout mem_layout) {
   if (input == nullptr || output == nullptr || width <= 0 || height <= 0) {
     return false;
   }
   bool ret = false;
   switch (algo_type) {
   case AlgoType::kNativeCpu:
-    ret = rgb_2_gray_native(input, output, width, height);
-    break;
+    switch (mem_layout) {
+    case MemLayout::Packed:
+      ret = rgb_packed_2_gray_native(input, output, width, height);
+      break;
+    case MemLayout::Planar:
+      ret = rgb_planar_2_gray_native(input, output, width, height);
+      break;
+    default:
+      assert(false);
+      break;
+    }
+
   case AlgoType::kParallelCpu:
-    ret = rgb_2_gray_parallel(input, output, width, height);
+    switch (mem_layout) {
+    case MemLayout::Packed:
+      ret = rgb_packed_2_gray_parallel(input, output, width, height);
+      break;
+    case MemLayout::Planar:
+      ret = rgb_planar_2_gray_parallel(input, output, width, height);
+      break;
+    default:
+      assert(false);
+      break;
+    }
     break;
   case AlgoType::kSimdCpu:
-    ret = rgb_2_gray_simd(input, output, width, height);
+    switch (mem_layout) {
+    case MemLayout::Packed:
+      ret = rgb_packed_2_gray_simd(input, output, width, height);
+      break;
+    case MemLayout::Planar:
+      ret = rgb_planar_2_gray_simd(input, output, width, height);
+      break;
+    default:
+      assert(false);
+      break;
+    }
     break;
 
   default:

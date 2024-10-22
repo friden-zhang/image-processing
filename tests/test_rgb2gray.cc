@@ -60,8 +60,7 @@ void save_png(const std::string &filename,
   fclose(fp);
 }
 
-// Test the rgb_2_gray_native function
-TEST(RGB2GrayTest, NativeConversion) {
+TEST(RGB2GrayTest, PackedNativeConversion) {
   int width = 1920;
   int height = 1080;
   auto input_image = read_raw_image("/tmp/geometric_image.rgb", width, height);
@@ -69,7 +68,8 @@ TEST(RGB2GrayTest, NativeConversion) {
 
   ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
       input_image.data(), output_image.data(), width, height,
-      image_processing::color_convert::AlgoType::kNativeCpu))
+      image_processing::color_convert::AlgoType::kNativeCpu,
+      image_processing::color_convert::MemLayout::Packed))
       << "Expected rgb_2_gray to return true but it returned false.";
 
   EXPECT_EQ(output_image[100 * width + 100], 76);
@@ -78,16 +78,24 @@ TEST(RGB2GrayTest, NativeConversion) {
   // save_png("/tmp/geometric_image.gray.png", output_image, width, height);
 }
 
-// Test the rgb_2_gray_parallel function
-TEST(RGB2GrayTest, ParallelConversion) {
+TEST(RGB2GrayTest, PlanarNativeConversion) {
   int width = 1920;
   int height = 1080;
   auto input_image = read_raw_image("/tmp/geometric_image.rgb", width, height);
+  auto input_image_planar = input_image;
+
+  for (int index = 0; index < height * width; index++) {
+    input_image_planar[index] = input_image[index * 3];
+    input_image_planar[index + height * width] = input_image[index * 3 + 1];
+    input_image_planar[index + 2 * height * width] = input_image[index * 3 + 2];
+  }
+
   std::vector<unsigned char> output_image(width * height);
 
   ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
-      input_image.data(), output_image.data(), width, height,
-      image_processing::color_convert::AlgoType::kParallelCpu))
+      input_image_planar.data(), output_image.data(), width, height,
+      image_processing::color_convert::AlgoType::kNativeCpu,
+      image_processing::color_convert::MemLayout::Planar))
       << "Expected rgb_2_gray to return true but it returned false.";
 
   EXPECT_EQ(output_image[100 * width + 100], 76);
@@ -96,8 +104,7 @@ TEST(RGB2GrayTest, ParallelConversion) {
   // save_png("/tmp/geometric_image.gray.png", output_image, width, height);
 }
 
-// Test the rgb_2_gray_simd function
-TEST(RGB2GrayTest, SIMDConversion) {
+TEST(RGB2GrayTest, PackedParallelConversion) {
   int width = 1920;
   int height = 1080;
   auto input_image = read_raw_image("/tmp/geometric_image.rgb", width, height);
@@ -105,7 +112,76 @@ TEST(RGB2GrayTest, SIMDConversion) {
 
   ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
       input_image.data(), output_image.data(), width, height,
-      image_processing::color_convert::AlgoType::kSimdCpu))
+      image_processing::color_convert::AlgoType::kParallelCpu,
+      image_processing::color_convert::MemLayout::Packed))
+      << "Expected rgb_2_gray to return true but it returned false.";
+
+  EXPECT_EQ(output_image[100 * width + 100], 76);
+  EXPECT_EQ(output_image[50 * width + 400], 29);
+
+  // save_png("/tmp/geometric_image.gray.png", output_image, width, height);
+}
+
+TEST(RGB2GrayTest, PlanarParallelConversion) {
+  int width = 1920;
+  int height = 1080;
+  auto input_image = read_raw_image("/tmp/geometric_image.rgb", width, height);
+  std::vector<unsigned char> output_image(width * height);
+  auto input_image_planar = input_image;
+
+  for (int index = 0; index < height * width; index++) {
+    input_image_planar[index] = input_image[index * 3];
+    input_image_planar[index + height * width] = input_image[index * 3 + 1];
+    input_image_planar[index + 2 * height * width] = input_image[index * 3 + 2];
+  }
+
+  ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
+      input_image_planar.data(), output_image.data(), width, height,
+      image_processing::color_convert::AlgoType::kParallelCpu,
+      image_processing::color_convert::MemLayout::Planar))
+      << "Expected rgb_2_gray to return true but it returned false.";
+
+  EXPECT_EQ(output_image[100 * width + 100], 76);
+  EXPECT_EQ(output_image[50 * width + 400], 29);
+
+  // save_png("/tmp/geometric_image.gray.png", output_image, width, height);
+}
+
+TEST(RGB2GrayTest, PackedSIMDConversion) {
+  int width = 1920;
+  int height = 1080;
+  auto input_image = read_raw_image("/tmp/geometric_image.rgb", width, height);
+  std::vector<unsigned char> output_image(width * height);
+
+  ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
+      input_image.data(), output_image.data(), width, height,
+      image_processing::color_convert::AlgoType::kSimdCpu,
+      image_processing::color_convert::MemLayout::Packed))
+      << "Expected rgb_2_gray to return true but it returned false.";
+
+  EXPECT_TRUE(std::abs(output_image[100 * width + 100] - 76) <= 2);
+  EXPECT_TRUE(std::abs(output_image[50 * width + 400] - 29) <= 2);
+
+  // save_png("/tmp/geometric_image.gray.png", output_image, width, height);
+}
+
+TEST(RGB2GrayTest, PlanarSIMDConversion) {
+  int width = 1920;
+  int height = 1080;
+  auto input_image = read_raw_image("/tmp/geometric_image.rgb", width, height);
+  std::vector<unsigned char> output_image(width * height);
+  auto input_image_planar = input_image;
+
+  for (int index = 0; index < height * width; index++) {
+    input_image_planar[index] = input_image[index * 3];
+    input_image_planar[index + height * width] = input_image[index * 3 + 1];
+    input_image_planar[index + 2 * height * width] = input_image[index * 3 + 2];
+  }
+
+  ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
+      input_image_planar.data(), output_image.data(), width, height,
+      image_processing::color_convert::AlgoType::kSimdCpu,
+      image_processing::color_convert::MemLayout::Planar))
       << "Expected rgb_2_gray to return true but it returned false.";
 
   EXPECT_TRUE(std::abs(output_image[100 * width + 100] - 76) <= 2);
