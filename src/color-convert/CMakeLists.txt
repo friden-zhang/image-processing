@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(color-convert)
+project(color-convert LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(TBB REQUIRED)
+find_package(CUDA REQUIRED)
 
-include_directories(${TBB_INCLUDE_DIRS})
+include_directories(${TBB_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
 
 file(GLOB CPU_SOURCES "kernels/cpu/*.cc")
 
@@ -15,6 +16,9 @@ file(GLOB CUDA_SOURCES "kernels/cuda/*.cu")
 add_library(${PROJECT_NAME}-cpu SHARED ${CPU_SOURCES})
 target_link_libraries(${PROJECT_NAME}-cpu PUBLIC TBB::tbb)
 
+set(CMAKE_CUDA_ARCHITECTURES "60;61;70;75;80")
+add_library(${PROJECT_NAME}-cuda SHARED ${CUDA_SOURCES})
+target_link_libraries(${PROJECT_NAME}-cuda PUBLIC  ${CUDA_LIBRARIES})
 
 # Check for ARM architecture (ARM or AARCH64)
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm|aarch64")
@@ -30,4 +34,4 @@ endif()
 
 file(GLOB CPU_SOURCES "kernels/*.cc")
 add_library(${PROJECT_NAME} SHARED ${CPU_SOURCES})
-target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}-cpu)
+target_link_libraries(${PROJECT_NAME} PUBLIC ${PROJECT_NAME}-cpu ${PROJECT_NAME}-cuda)

@@ -1,5 +1,6 @@
 #include "image-processing/color-convert/kernels/rgba2gray.hpp"
 #include "cpu/rgba2gray.hpp"
+#include "cuda/rgba2gray.cuh"
 #include <assert.h>
 #include <iostream>
 namespace image_processing {
@@ -51,6 +52,17 @@ bool rgba_2_gray(const unsigned char *input, unsigned char *output, int width,
       break;
     default:
       assert(false);
+      break;
+    }
+    break;
+
+  case AlgoType::kCuda:
+    switch (mem_layout) {
+    case MemLayout::Packed:
+      ret = rgba_packed_2_gray_cuda(input, output, width, height);
+      break;
+    case MemLayout::Planar:
+      ret = rgba_planar_2_gray_cuda(input, output, width, height);
       break;
     }
     break;
