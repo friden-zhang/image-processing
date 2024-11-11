@@ -1,7 +1,6 @@
 #include "image-processing/color-convert/kernels/rgba2gray.hpp"
 #include "gtest/gtest.h"
 #include <fstream>
-#include <png.h>
 #include <stdexcept>
 #include <vector>
 
@@ -24,41 +23,6 @@ static std::vector<unsigned char> read_raw_image(const std::string &filename,
 
   return data;
 }
-
-// static void save_png(const std::string &filename,
-//                      const std::vector<unsigned char> &gray_data, int width,
-//                      int height) {
-//   FILE *fp = fopen(filename.c_str(), "wb");
-//   if (!fp)
-//     return;
-
-//   png_structp png =
-//       png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
-//   png_infop info = png_create_info_struct(png);
-
-//   if (setjmp(png_jmpbuf(png))) {
-//     png_destroy_write_struct(&png, &info);
-//     fclose(fp);
-//     return;
-//   }
-
-//   png_init_io(png, fp);
-//   png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_GRAY,
-//                PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
-//                PNG_FILTER_TYPE_DEFAULT);
-//   png_write_info(png, info);
-
-//   std::vector<png_bytep> rows(height);
-//   for (int y = 0; y < height; ++y) {
-//     rows[y] = const_cast<png_bytep>(&gray_data[y * width]);
-//   }
-
-//   png_write_image(png, rows.data());
-//   png_write_end(png, nullptr);
-
-//   png_destroy_write_struct(&png, &info);
-//   fclose(fp);
-// }
 
 TEST(RGBA2GrayTest, PackedNativeConversion) {
   int width = 1920;
@@ -186,6 +150,7 @@ TEST(RGBA2GrayTest, PlanarSIMDConversion) {
       << " to be equal to 29 but it was not.";
 }
 
+#if HAS_CUDA
 
 TEST(RGBA2GrayTest, PackedCUDAConversion) {
   int width = 1920;
@@ -233,3 +198,5 @@ TEST(RGBA2GrayTest, PlanarCUDAConversion) {
       << "Expected " << static_cast<int>(output_image[50 * width + 400])
       << " to be equal to 29 but it was not.";
 }
+
+#endif
