@@ -63,7 +63,25 @@ bool rgba_packed_2_gray_simd(const unsigned char *input, unsigned char *output,
   int index = 0;
 
 #ifdef __ARM_NEON__
-  // std::unimplemented();
+  for (; index <= pixel_count - 8; index += 8) {
+    uint8x8x4_t rgba_vec = vld4_u8(input + index * 4);
+    auto r_vec = rgba_vec.val[0];
+    auto g_vec = rgba_vec.val[1];
+    auto b_vec = rgba_vec.val[2];
+
+    uint16x8_t r_mul = vmull_u8(r_vec, vdup_n_u8(77));
+    uint16x8_t g_mul = vmull_u8(g_vec, vdup_n_u8(150));
+    uint16x8_t b_mul = vmull_u8(b_vec, vdup_n_u8(29));
+
+    uint16x8_t gray_sum = vaddq_u16(r_mul, g_mul);
+    gray_sum = vaddq_u16(gray_sum, b_mul);
+
+    gray_sum = vshrq_n_u16(gray_sum, 8);
+
+    // jest throw away the high bits, >= 256 will be 0
+    uint8x8_t gray_vec = vmovn_u16(gray_sum);
+    vst1_u8(output + index, gray_vec);
+  }
 #elif defined(__AVX__)
 
   for (; index <= pixel_count - 8; index += 8) {
@@ -71,20 +89,25 @@ bool rgba_packed_2_gray_simd(const unsigned char *input, unsigned char *output,
                                       255, 255, 255, 255, 255, 255, 255, 255,
                                       0,   255, 4,   255, 8,   255, 12,  255,
                                       255, 255, 255, 255, 255, 255, 255, 255};
-    std::array<uint8_t, 32> g_mask = {1,   255, 5,   255, 9,   255, 13,  255,
-                                      255, 255, 255, 255, 255, 255, 255, 255,
-                                      1,   255, 5,   255, 9,   255, 13,  255,
-                                      255, 255, 255, 255, 255, 255, 255, 255,};
-    std::array<uint8_t, 32> b_mask = {2,   255, 6,   255, 10,   255, 14,  255,
-                                      255, 255, 255, 255, 255, 255, 255, 255,
-                                      2,   255, 6,   255, 10,   255, 14,  255,
-                                      255, 255, 255, 255, 255, 255, 255, 255,};
-    auto r_mask_vec = _mm256_loadu_si256(reinterpret_cast<__m256i*>(r_mask.data()));
-    auto g_mask_vec = _mm256_loadu_si256(reinterpret_cast<__m256i*>(g_mask.data()));
-    auto b_mask_vec = _mm256_loadu_si256(reinterpret_cast<__m256i*>(b_mask.data()));
+    std::array<uint8_t, 32> g_mask = {
+        1, 255, 5, 255, 9, 255, 13, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+        1, 255, 5, 255, 9, 255, 13, 255, 255, 255, 255, 255, 255, 255, 255, 255,
+    };
+    std::array<uint8_t, 32> b_mask = {
+        2,   255, 6,   255, 10,  255, 14,  255, 255, 255, 255,
+        255, 255, 255, 255, 255, 2,   255, 6,   255, 10,  255,
+        14,  255, 255, 255, 255, 255, 255, 255, 255, 255,
+    };
+    auto r_mask_vec =
+        _mm256_loadu_si256(reinterpret_cast<__m256i *>(r_mask.data()));
+    auto g_mask_vec =
+        _mm256_loadu_si256(reinterpret_cast<__m256i *>(g_mask.data()));
+    auto b_mask_vec =
+        _mm256_loadu_si256(reinterpret_cast<__m256i *>(b_mask.data()));
 
-    auto data = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(input + index * 4));
-    
+    auto data = _mm256_loadu_si256(
+        reinterpret_cast<const __m256i *>(input + index * 4));
+
     __m256i r_temp_res = _mm256_shuffle_epi8(data, r_mask_vec);
     __m256i g_temp_res = _mm256_shuffle_epi8(data, g_mask_vec);
     __m256i b_temp_res = _mm256_shuffle_epi8(data, b_mask_vec);
@@ -165,7 +188,26 @@ bool rgba_planar_2_gray_simd(const unsigned char *input, unsigned char *output,
   int index = 0;
 
 #ifdef __ARM_NEON__
-  // std::unimplemented();
+  for (; index <= pixel_count - 8; index += 8) {
+    // Convert to grayscale using the luminosity method
+    uint8x8_t r_vec = vld1_u8(input + index);
+    uint8x8_t g_vec = vld1_u8(input + index + pixel_count);
+    uint8x8_t b_vec = vld1_u8(input + index + 2 * pixel_count);
+
+    // use uint16x8_t to avoid overflow
+    uint16x8_t r_mul = vmull_u8(r_vec, vdup_n_u8(77));
+    uint16x8_t g_mul = vmull_u8(g_vec, vdup_n_u8(150));
+    uint16x8_t b_mul = vmull_u8(b_vec, vdup_n_u8(29));
+
+    uint16x8_t gray_sum = vaddq_u16(r_mul, g_mul);
+    gray_sum = vaddq_u16(gray_sum, b_mul);
+
+    gray_sum = vshrq_n_u16(gray_sum, 8);
+
+    // jest throw away the high bits, >= 256 will be 0
+    uint8x8_t gray_vec = vmovn_u16(gray_sum);
+    vst1_u8(output + index, gray_vec);
+  }
 #elif defined(__AVX__)
   for (; index <= pixel_count - 16; index += 16) {
     __m128i r_vec_temp =

@@ -104,16 +104,6 @@ bool rgb_packed_2_gray_simd(const unsigned char *input, unsigned char *output,
     vst1_u8(output + index, gray_vec);
   }
 
-  for (; index < pixel_count; ++index) {
-    // Each pixel in RGB is represented by three consecutive bytes: R, G, B
-    unsigned char r = input[index * 3];     // Red
-    unsigned char g = input[index * 3 + 1]; // Green
-    unsigned char b = input[index * 3 + 2]; // Blue
-    // Convert to grayscale using the luminosity method
-    unsigned char gray = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
-
-    output[index] = gray; // Set the output pixel to the grayscale value
-  }
 #elif defined(__AVX__)
   for (; index <= pixel_count - 16; index += 16) {
 
@@ -159,17 +149,6 @@ bool rgb_packed_2_gray_simd(const unsigned char *input, unsigned char *output,
     // if intput is aligned to 32 bytes, we can use _mm_store_si128
     // otherwise, we need to use _mm_storeu_si128
     _mm_storeu_si128(reinterpret_cast<__m128i *>(output + index), result);
-  }
-
-  for (; index < pixel_count; ++index) {
-    // Each pixel in RGB is represented by three consecutive bytes: R, G, B
-    unsigned char r = input[index * 3];     // Red
-    unsigned char g = input[index * 3 + 1]; // Green
-    unsigned char b = input[index * 3 + 2]; // Blue
-    // Convert to grayscale using the luminosity method
-    unsigned char gray = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
-
-    output[index] = gray; // Set the output pixel to the grayscale value
   }
 
   /*
@@ -258,6 +237,16 @@ bool rgb_packed_2_gray_simd(const unsigned char *input, unsigned char *output,
 #else
   assert(false && "SIMD not supported on this platform");
 #endif
+  for (; index < pixel_count; ++index) {
+    // Each pixel in RGB is represented by three consecutive bytes: R, G, B
+    unsigned char r = input[index * 3];     // Red
+    unsigned char g = input[index * 3 + 1]; // Green
+    unsigned char b = input[index * 3 + 2]; // Blue
+    // Convert to grayscale using the luminosity method
+    unsigned char gray = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
+
+    output[index] = gray; // Set the output pixel to the grayscale value
+  }
   return true;
 }
 
@@ -325,16 +314,6 @@ bool rgb_planar_2_gray_simd(const unsigned char *input, unsigned char *output,
     vst1_u8(output + index, gray_vec);
   }
 
-  for (; index < pixel_count; ++index) {
-    // Each pixel in RGB is represented by three consecutive bytes: R, G, B
-    unsigned char r = input[index];                   // Red
-    unsigned char g = input[index + pixel_count];     // Green
-    unsigned char b = input[index + 2 * pixel_count]; // Blue
-    // Convert to grayscale using the luminosity method
-    unsigned char gray = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
-
-    output[index] = gray; // Set the output pixel to the grayscale value
-  }
 #elif defined(__AVX__)
   for (; index <= pixel_count - 16; index += 16) {
     __m128i r_vec_temp =
@@ -362,6 +341,9 @@ bool rgb_planar_2_gray_simd(const unsigned char *input, unsigned char *output,
     // otherwise, we need to use _mm_storeu_si128
     _mm_storeu_si128(reinterpret_cast<__m128i *>(output + index), result);
   }
+#else
+  assert(false && "SIMD not supported on this platform");
+#endif
   for (; index < pixel_count; ++index) {
     // Each pixel in RGB is represented by three consecutive bytes: R, G, B
     unsigned char r = input[index];                   // Red
@@ -372,9 +354,6 @@ bool rgb_planar_2_gray_simd(const unsigned char *input, unsigned char *output,
 
     output[index] = gray; // Set the output pixel to the grayscale value
   }
-#else
-  assert(false && "SIMD not supported on this platform");
-#endif
   return true;
 }
 
