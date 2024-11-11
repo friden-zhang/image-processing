@@ -3,6 +3,8 @@
 #include "cuda/rgb2gray.cuh"
 #include <assert.h>
 #include <iostream>
+#include <exception>
+
 namespace image_processing {
 
 namespace color_convert {
@@ -56,6 +58,7 @@ bool rgb_2_gray(const unsigned char *input, unsigned char *output, int width,
     }
     break;
   case AlgoType::kCuda:
+#if HAVE_CUDA
     switch (mem_layout) {
     case MemLayout::Packed:
       ret = rgb_packed_2_gray_cuda(input, output, width, height);
@@ -65,6 +68,9 @@ bool rgb_2_gray(const unsigned char *input, unsigned char *output, int width,
       break;
     }
     break;
+#else
+    throw std::runtime_error("Cuda not supported in this build.");
+#endif
   default:
     assert(false);
     break;

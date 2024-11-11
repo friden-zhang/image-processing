@@ -63,7 +63,7 @@ bool rgba_packed_2_gray_simd(const unsigned char *input, unsigned char *output,
   int index = 0;
 
 #ifdef __ARM_NEON__
-  std::unimplemented();
+  // std::unimplemented();
 #elif defined(__AVX__)
 
   for (; index <= pixel_count - 8; index += 8) {
@@ -165,7 +165,7 @@ bool rgba_planar_2_gray_simd(const unsigned char *input, unsigned char *output,
   int index = 0;
 
 #ifdef __ARM_NEON__
-  std::unimplemented();
+  // std::unimplemented();
 #elif defined(__AVX__)
   for (; index <= pixel_count - 16; index += 16) {
     __m128i r_vec_temp =

@@ -55,7 +55,7 @@ bool rgba_2_gray(const unsigned char *input, unsigned char *output, int width,
       break;
     }
     break;
-
+#if HAVE_CUDA
   case AlgoType::kCuda:
     switch (mem_layout) {
     case MemLayout::Packed:
@@ -66,7 +66,9 @@ bool rgba_2_gray(const unsigned char *input, unsigned char *output, int width,
       break;
     }
     break;
-
+#else
+    throw std::runtime_error("Cuda not supported in this build.");
+#endif
   default:
     assert(false);
     break;
