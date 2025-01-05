@@ -11,6 +11,9 @@
 #elif defined(__AVX__)
 #include <immintrin.h>
 #endif
+
+#include <experimental/simd>
+
 namespace image_processing {
 
 namespace color_convert {
@@ -57,91 +60,50 @@ bool rgba_packed_2_gray_parallel(const unsigned char *input,
   return true;
 }
 
+// this function is bad performance
 bool rgba_packed_2_gray_simd(const unsigned char *input, unsigned char *output,
                              int width, int height) {
   int pixel_count = width * height;
-  int index = 0;
+  namespace stdx = std::experimental;
+  using simd_t = stdx::native_simd<uint16_t>;
+  constexpr auto step = simd_t::size();
 
-#ifdef __ARM_NEON__
-  for (; index <= pixel_count - 8; index += 8) {
-    uint8x8x4_t rgba_vec = vld4_u8(input + index * 4);
-    auto r_vec = rgba_vec.val[0];
-    auto g_vec = rgba_vec.val[1];
-    auto b_vec = rgba_vec.val[2];
+  using fixed_size_simd_t = stdx::fixed_size_simd<uint8_t, step>;
 
-    uint16x8_t r_mul = vmull_u8(r_vec, vdup_n_u8(77));
-    uint16x8_t g_mul = vmull_u8(g_vec, vdup_n_u8(150));
-    uint16x8_t b_mul = vmull_u8(b_vec, vdup_n_u8(29));
+  size_t tile = pixel_count / step;
+  size_t left = pixel_count % step;
 
-    uint16x8_t gray_sum = vaddq_u16(r_mul, g_mul);
-    gray_sum = vaddq_u16(gray_sum, b_mul);
+  simd_t r_mul = simd_t(77);
+  simd_t g_mul = simd_t(150);
+  simd_t b_mul = simd_t(29);
 
-    gray_sum = vshrq_n_u16(gray_sum, 8);
+#pragma omp parallel for num_threads(4)
+  for (size_t i = 0; i < tile; ++i) {
+    simd_t r_vec;
+    simd_t g_vec;
+    simd_t b_vec;
+    simd_t gray_vec;
 
-    // jest throw away the high bits, >= 256 will be 0
-    uint8x8_t gray_vec = vmovn_u16(gray_sum);
-    vst1_u8(output + index, gray_vec);
-  }
-#elif defined(__AVX__)
+#pragma GCC unroll step
+    for (size_t j = 0; j < step; ++j) {
+      r_vec[j] = input[4 * (i * step + j) + 0];
+      g_vec[j] = input[4 * (i * step + j) + 1];
+      b_vec[j] = input[4 * (i * step + j) + 2];
+    }
+    gray_vec = (r_vec * r_mul + g_vec * g_mul + b_vec * b_mul) >> 8;
 
-  for (; index <= pixel_count - 8; index += 8) {
-    std::array<uint8_t, 32> r_mask = {0,   255, 4,   255, 8,   255, 12,  255,
-                                      255, 255, 255, 255, 255, 255, 255, 255,
-                                      0,   255, 4,   255, 8,   255, 12,  255,
-                                      255, 255, 255, 255, 255, 255, 255, 255};
-    std::array<uint8_t, 32> g_mask = {
-        1, 255, 5, 255, 9, 255, 13, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-        1, 255, 5, 255, 9, 255, 13, 255, 255, 255, 255, 255, 255, 255, 255, 255,
-    };
-    std::array<uint8_t, 32> b_mask = {
-        2,   255, 6,   255, 10,  255, 14,  255, 255, 255, 255,
-        255, 255, 255, 255, 255, 2,   255, 6,   255, 10,  255,
-        14,  255, 255, 255, 255, 255, 255, 255, 255, 255,
-    };
-    auto r_mask_vec =
-        _mm256_loadu_si256(reinterpret_cast<__m256i *>(r_mask.data()));
-    auto g_mask_vec =
-        _mm256_loadu_si256(reinterpret_cast<__m256i *>(g_mask.data()));
-    auto b_mask_vec =
-        _mm256_loadu_si256(reinterpret_cast<__m256i *>(b_mask.data()));
-
-    auto data = _mm256_loadu_si256(
-        reinterpret_cast<const __m256i *>(input + index * 4));
-
-    __m256i r_temp_res = _mm256_shuffle_epi8(data, r_mask_vec);
-    __m256i g_temp_res = _mm256_shuffle_epi8(data, g_mask_vec);
-    __m256i b_temp_res = _mm256_shuffle_epi8(data, b_mask_vec);
-
-    // uint16 x 8
-    __m128i r_vec = _mm256_extracti128_si256(r_temp_res, 0);
-    __m128i g_vec = _mm256_extracti128_si256(g_temp_res, 0);
-    __m128i b_vec = _mm256_extracti128_si256(b_temp_res, 0);
-
-    __m128i r_mul = _mm_mullo_epi16(r_vec, _mm_set1_epi16(77));
-    __m128i g_mul = _mm_mullo_epi16(g_vec, _mm_set1_epi16(150));
-    __m128i b_mul = _mm_mullo_epi16(b_vec, _mm_set1_epi16(29));
-
-    __m128i gray_sum = _mm_add_epi16(r_mul, g_mul);
-    gray_sum = _mm_add_epi16(gray_sum, b_mul);
-    gray_sum = _mm_srli_epi16(gray_sum, 8);
-
-    _mm_storeu_si128(reinterpret_cast<__m128i *>(output + index), gray_sum);
+    stdx::parallelism_v2::static_simd_cast<fixed_size_simd_t>(gray_vec).copy_to(
+        output + i * step, stdx::element_aligned);
   }
 
-#else
-  assert(false && "SIMD not supported on this platform");
-#endif
+  for (size_t i = 0; i < left; i += 1) {
+    uint16_t r = input[3 * (tile * step + i) + 0];
+    uint16_t g = input[3 * (tile * step + i) + 1];
+    uint16_t b = input[3 * (tile * step + i) + 2];
 
-  for (; index < pixel_count; ++index) {
-    // Each pixel in RGBA is represented by three consecutive bytes: R, G, B, A
-    // We only need the R, G, and B values to convert to grayscale
-    unsigned char r = input[index * 4];     // Red
-    unsigned char g = input[index * 4 + 1]; // Green
-    unsigned char b = input[index * 4 + 2]; // Blue
-    // Convert to grayscale using the luminosity method
-    unsigned char gray = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
+    uint16_t gray = (r * 77 + g * 150 + b * 29);
 
-    output[index] = gray; // Set the output pixel to the grayscale value
+    output[tile * step + i] = gray >> 8;
   }
 
   return true;
@@ -185,71 +147,51 @@ bool rgba_planar_2_gray_parallel(const unsigned char *input,
 bool rgba_planar_2_gray_simd(const unsigned char *input, unsigned char *output,
                              int width, int height) {
   int pixel_count = width * height;
-  int index = 0;
+  namespace stdx = std::experimental;
 
-#ifdef __ARM_NEON__
-  for (; index <= pixel_count - 8; index += 8) {
-    // Convert to grayscale using the luminosity method
-    uint8x8_t r_vec = vld1_u8(input + index);
-    uint8x8_t g_vec = vld1_u8(input + index + pixel_count);
-    uint8x8_t b_vec = vld1_u8(input + index + 2 * pixel_count);
+  using simd_t = stdx::native_simd<uint16_t>;
+  constexpr auto step = simd_t::size();
 
-    // use uint16x8_t to avoid overflow
-    uint16x8_t r_mul = vmull_u8(r_vec, vdup_n_u8(77));
-    uint16x8_t g_mul = vmull_u8(g_vec, vdup_n_u8(150));
-    uint16x8_t b_mul = vmull_u8(b_vec, vdup_n_u8(29));
+  using fixed_size_simd_t = stdx::fixed_size_simd<uint8_t, step>;
 
-    uint16x8_t gray_sum = vaddq_u16(r_mul, g_mul);
-    gray_sum = vaddq_u16(gray_sum, b_mul);
+  size_t tile = pixel_count / step;
+  size_t left = pixel_count % step;
 
-    gray_sum = vshrq_n_u16(gray_sum, 8);
+  simd_t r_mul = simd_t(77);
+  simd_t g_mul = simd_t(150);
+  simd_t b_mul = simd_t(29);
 
-    // jest throw away the high bits, >= 256 will be 0
-    uint8x8_t gray_vec = vmovn_u16(gray_sum);
-    vst1_u8(output + index, gray_vec);
+  for (size_t i = 0; i < tile; i += 1) {
+    simd_t r_vec;
+    simd_t g_vec;
+    simd_t b_vec;
+    simd_t gray_vec;
+
+    fixed_size_simd_t r_vec_fixed(input + i * step, stdx::element_aligned);
+    r_vec = stdx::parallelism_v2::static_simd_cast<simd_t>(r_vec_fixed);
+
+    fixed_size_simd_t g_vec_fixed(input + i * step + pixel_count,
+                                  stdx::element_aligned);
+    g_vec = stdx::parallelism_v2::static_simd_cast<simd_t>(g_vec_fixed);
+
+    fixed_size_simd_t b_vec_fixed(input + i * step + 2 * pixel_count,
+                                  stdx::element_aligned);
+    b_vec = stdx::parallelism_v2::static_simd_cast<simd_t>(b_vec_fixed);
+
+    gray_vec = (r_vec * r_mul + g_vec * g_mul + b_vec * b_mul) >> 8;
+
+    stdx::parallelism_v2::static_simd_cast<fixed_size_simd_t>(gray_vec).copy_to(
+        output + i * step, stdx::element_aligned);
   }
-#elif defined(__AVX__)
-  for (; index <= pixel_count - 16; index += 16) {
-    __m128i r_vec_temp =
-        _mm_loadu_si128(reinterpret_cast<const __m128i *>(input + index));
-    __m128i g_vec_temp = _mm_loadu_si128(
-        reinterpret_cast<const __m128i *>(input + index + pixel_count));
-    __m128i b_vec_temp = _mm_loadu_si128(
-        reinterpret_cast<const __m128i *>(input + index + 2 * pixel_count));
 
-    __m256i r_vec = _mm256_cvtepu8_epi16(r_vec_temp);
-    __m256i g_vec = _mm256_cvtepu8_epi16(g_vec_temp);
-    __m256i b_vec = _mm256_cvtepu8_epi16(b_vec_temp);
-
-    __m256i r_mul = _mm256_mullo_epi16(r_vec, _mm256_set1_epi16(77));
-    __m256i g_mul = _mm256_mullo_epi16(g_vec, _mm256_set1_epi16(150));
-    __m256i b_mul = _mm256_mullo_epi16(b_vec, _mm256_set1_epi16(29));
-
-    __m256i gray_sum = _mm256_add_epi16(r_mul, g_mul);
-    gray_sum = _mm256_add_epi16(gray_sum, b_mul);
-    gray_sum = _mm256_srli_epi16(gray_sum, 8);
-
-    __m256i packed = _mm256_packus_epi16(gray_sum, gray_sum);
-    __m128i result = _mm256_extracti128_si256(packed, 0);
-    // if intput is aligned to 32 bytes, we can use _mm_store_si128
-    // otherwise, we need to use _mm_storeu_si128
-    _mm_storeu_si128(reinterpret_cast<__m128i *>(output + index), result);
+  for (size_t i = 0; i < left; i += 1) {
+    uint16_t r = input[tile * step + i];
+    uint16_t g = input[tile * step + i + pixel_count];
+    uint16_t b = input[tile * step + i + 2 * pixel_count];
+    uint16_t gray = (r * 77 + g * 150 + b * 29);
+    output[tile * step + i] = gray >> 8;
   }
-#else
-  assert(false && "SIMD not supported on this platform");
-#endif
 
-  for (; index < pixel_count; ++index) {
-    // Each pixel in RGB is represented by three consecutive bytes: R, G, B, A
-    // We only need the R, G, and B values to convert to grayscale
-    unsigned char r = input[index];                   // Red
-    unsigned char g = input[index + pixel_count];     // Green
-    unsigned char b = input[index + 2 * pixel_count]; // Blue
-    // Convert to grayscale using the luminosity method
-    unsigned char gray = (unsigned char)(0.299 * r + 0.587 * g + 0.114 * b);
-
-    output[index] = gray; // Set the output pixel to the grayscale value
-  }
   return true;
 }
 
