@@ -58,13 +58,13 @@ bool rgb_2_gray(const unsigned char *input, unsigned char *output, int width,
     }
     break;
   case AlgoType::kCuda:
-#if HAVE_CUDA
+#if HAS_CUDA
     switch (mem_layout) {
     case MemLayout::Packed:
-      ret = rgb_packed_2_gray_cuda(input, output, width, height);
+      ret = launch_rgb_packed_2_gray_cuda(input, output, width, height);
       break;
     case MemLayout::Planar:
-      ret = rgb_planar_2_gray_cuda(input, output, width, height);
+      ret = launch_rgb_planar_2_gray_cuda(input, output, width, height);
       break;
     }
     break;

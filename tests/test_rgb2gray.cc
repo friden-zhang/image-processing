@@ -3,6 +3,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <vector>
+#include <thrust/device_vector.h>
 
 static std::vector<unsigned char> read_raw_image(const std::string &filename,
                                                  int width, int height) {
@@ -38,7 +39,6 @@ TEST(RGB2GrayTest, PackedNativeConversion) {
 
   EXPECT_EQ(output_image[100 * width + 100], 76);
   EXPECT_EQ(output_image[50 * width + 400], 29);
-
 }
 
 TEST(RGB2GrayTest, PlanarNativeConversion) {
@@ -63,7 +63,6 @@ TEST(RGB2GrayTest, PlanarNativeConversion) {
 
   EXPECT_EQ(output_image[100 * width + 100], 76);
   EXPECT_EQ(output_image[50 * width + 400], 29);
-
 }
 
 TEST(RGB2GrayTest, PackedParallelConversion) {
@@ -80,7 +79,6 @@ TEST(RGB2GrayTest, PackedParallelConversion) {
 
   EXPECT_EQ(output_image[100 * width + 100], 76);
   EXPECT_EQ(output_image[50 * width + 400], 29);
-
 }
 
 TEST(RGB2GrayTest, PlanarParallelConversion) {
@@ -104,7 +102,6 @@ TEST(RGB2GrayTest, PlanarParallelConversion) {
 
   EXPECT_EQ(output_image[100 * width + 100], 76);
   EXPECT_EQ(output_image[50 * width + 400], 29);
-
 }
 
 TEST(RGB2GrayTest, PackedSIMDConversion) {
@@ -125,7 +122,6 @@ TEST(RGB2GrayTest, PackedSIMDConversion) {
   EXPECT_TRUE(std::abs(output_image[50 * width + 400] - 29) <= 2)
       << "Expected " << static_cast<int>(output_image[50 * width + 400])
       << " to be equal to 29 but it was not.";
-
 }
 
 TEST(RGB2GrayTest, PlanarSIMDConversion) {
@@ -153,9 +149,7 @@ TEST(RGB2GrayTest, PlanarSIMDConversion) {
   EXPECT_TRUE(std::abs(output_image[50 * width + 400] - 29) <= 2)
       << "Expected " << static_cast<int>(output_image[50 * width + 400])
       << " to be equal to 29 but it was not.";
-
 }
-
 
 #if HAS_CUDA
 TEST(RGB2GrayTest, PackedCUDAConversion) {
@@ -164,11 +158,22 @@ TEST(RGB2GrayTest, PackedCUDAConversion) {
   auto input_image = read_raw_image("/tmp/geometric_image.rgb", width, height);
   std::vector<unsigned char> output_image(width * height);
 
+  thrust::device_vector<unsigned char> input_dev(
+      input_image.data(), input_image.data() + 3 * width * height);
+
+  thrust::device_vector<unsigned char> output_dev(output_image.data(), output_image.data() +  width * height);
+
+  unsigned char *input_dev_raw_ptr = thrust::raw_pointer_cast(input_dev.data());
+  unsigned char *output_dev_raw_ptr =
+      thrust::raw_pointer_cast(output_dev.data());
+
   ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
-      input_image.data(), output_image.data(), width, height,
+      input_dev_raw_ptr, output_dev_raw_ptr, width, height,
       image_processing::color_convert::AlgoType::kCuda,
       image_processing::color_convert::MemLayout::Packed))
       << "Expected rgb_2_gray to return true but it returned false.";
+
+  thrust::copy(output_dev.begin(), output_dev.end(), output_image.data());
 
   EXPECT_TRUE(std::abs(output_image[100 * width + 100] - 76) <= 2)
       << "Expected " << static_cast<int>(output_image[100 * width + 100])
@@ -176,7 +181,6 @@ TEST(RGB2GrayTest, PackedCUDAConversion) {
   EXPECT_TRUE(std::abs(output_image[50 * width + 400] - 29) <= 2)
       << "Expected " << static_cast<int>(output_image[50 * width + 400])
       << " to be equal to 29 but it was not.";
-
 }
 
 TEST(RGB2GrayTest, PlanarCUDAConversion) {
@@ -192,11 +196,23 @@ TEST(RGB2GrayTest, PlanarCUDAConversion) {
     input_image_planar[index + 2 * height * width] = input_image[index * 3 + 2];
   }
 
+  thrust::device_vector<unsigned char> input_dev(input_image_planar.data(),
+                                                 input_image_planar.data() +
+                                                     3 * width * height);
+
+  thrust::device_vector<unsigned char> output_dev(output_image.data(), output_image.data() +  width * height);
+
+  unsigned char *input_dev_raw_ptr = thrust::raw_pointer_cast(input_dev.data());
+  unsigned char *output_dev_raw_ptr =
+      thrust::raw_pointer_cast(output_dev.data());
+
   ASSERT_TRUE(image_processing::color_convert::kernels::rgb_2_gray(
-      input_image_planar.data(), output_image.data(), width, height,
+      input_dev_raw_ptr, output_dev_raw_ptr, width, height,
       image_processing::color_convert::AlgoType::kCuda,
       image_processing::color_convert::MemLayout::Planar))
       << "Expected rgb_2_gray to return true but it returned false.";
+
+  thrust::copy(output_dev.begin(), output_dev.end(), output_image.data());
 
   EXPECT_TRUE(std::abs(output_image[100 * width + 100] - 76) <= 2)
       << "Expected " << static_cast<int>(output_image[100 * width + 100])
@@ -204,6 +220,5 @@ TEST(RGB2GrayTest, PlanarCUDAConversion) {
   EXPECT_TRUE(std::abs(output_image[50 * width + 400] - 29) <= 2)
       << "Expected " << static_cast<int>(output_image[50 * width + 400])
       << " to be equal to 29 but it was not.";
-
 }
 #endif

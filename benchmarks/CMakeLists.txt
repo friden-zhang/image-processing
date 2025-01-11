@@ -1,8 +1,3 @@
-cmake_minimum_required(VERSION 3.10)
-
-project(image-processing-benchmark)
-
-set(CMAKE_CXX_STANDARD 17)
 
 find_package(benchmark REQUIRED)
 

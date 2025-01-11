@@ -1,6 +1,5 @@
 #include <cub/block/block_reduce.cuh>
 
-#include <thrust/device_vector.h>
 
 #include <cuda/atomic>
 
@@ -37,26 +36,17 @@ __global__ void rgb_packed_2_gray_kernel(const unsigned char *input,
 }
 } // namespace detail
 
-bool rgb_packed_2_gray_cuda(const unsigned char *input, unsigned char *output,
-                            int width, int height) {
-
-  // use device_trust vecrtor
-  thrust::device_vector<unsigned char> input_dev(input,
-                                                 input + 3 * width * height);
-  thrust::device_vector<unsigned char> output_dev(width * height);
-
-  unsigned char *input_dev_raw_ptr = thrust::raw_pointer_cast(input_dev.data());
-  unsigned char *output_dev_raw_ptr =
-      thrust::raw_pointer_cast(output_dev.data());
+bool launch_rgb_packed_2_gray_cuda(const unsigned char *input,
+                                   unsigned char *output, int width,
+                                   int height) {
 
   dim3 blockSize(32, 32);
   dim3 gridSize((width + blockSize.x - 1) / blockSize.x,
                 (height + blockSize.y - 1) / blockSize.y);
-  detail::rgb_packed_2_gray_kernel<<<gridSize, blockSize>>>(
-      input_dev_raw_ptr, output_dev_raw_ptr, width, height);
+  detail::rgb_packed_2_gray_kernel<<<gridSize, blockSize>>>(input, output,
+                                                            width, height);
   // TODO: hanle error
   cudaDeviceSynchronize();
-  thrust::copy(output_dev.begin(), output_dev.end(), output);
   return true;
 }
 namespace detail {
@@ -82,26 +72,17 @@ __global__ void rgb_planar_2_gray_kernel(const unsigned char *input,
 }
 
 } // namespace detail
-bool rgb_planar_2_gray_cuda(const unsigned char *input, unsigned char *output,
-                            int width, int height) {
-
-  // use device_trust vecrtor
-  thrust::device_vector<unsigned char> input_dev(input,
-                                                 input + 3 * width * height);
-  thrust::device_vector<unsigned char> output_dev(width * height);
-
-  unsigned char *input_dev_raw_ptr = thrust::raw_pointer_cast(input_dev.data());
-  unsigned char *output_dev_raw_ptr =
-      thrust::raw_pointer_cast(output_dev.data());
+bool launch_rgb_planar_2_gray_cuda(const unsigned char *input,
+                                   unsigned char *output, int width,
+                                   int height) {
 
   dim3 blockSize(32, 32);
   dim3 gridSize((width + blockSize.x - 1) / blockSize.x,
                 (height + blockSize.y - 1) / blockSize.y);
-  detail::rgb_planar_2_gray_kernel<<<gridSize, blockSize>>>(
-      input_dev_raw_ptr, output_dev_raw_ptr, width, height);
+  detail::rgb_planar_2_gray_kernel<<<gridSize, blockSize>>>(input, output,
+                                                            width, height);
   // TODO: hanle error
   cudaDeviceSynchronize();
-  thrust::copy(output_dev.begin(), output_dev.end(), output);
   return true;
 }
 

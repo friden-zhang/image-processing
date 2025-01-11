@@ -26,19 +26,32 @@ static void BenchmarkRGBA2Gray(benchmark::State &state) {
 
 BENCHMARK(
     BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kNativeCpu,
-                      image_processing::color_convert::MemLayout::Packed>);
+                       image_processing::color_convert::MemLayout::Packed>);
 BENCHMARK(
     BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kParallelCpu,
-                      image_processing::color_convert::MemLayout::Packed>);
+                       image_processing::color_convert::MemLayout::Packed>);
 BENCHMARK(
     BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kSimdCpu,
-                      image_processing::color_convert::MemLayout::Packed>);
+                       image_processing::color_convert::MemLayout::Packed>);
+#if HAS_CUDA
+
+BENCHMARK(
+    BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kCuda,
+                       image_processing::color_convert::MemLayout::Packed>);
+#endif // HAS_CUDA
+
 BENCHMARK(
     BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kNativeCpu,
-                      image_processing::color_convert::MemLayout::Planar>);
+                       image_processing::color_convert::MemLayout::Planar>);
 BENCHMARK(
     BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kParallelCpu,
-                      image_processing::color_convert::MemLayout::Planar>);
+                       image_processing::color_convert::MemLayout::Planar>);
 BENCHMARK(
     BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kSimdCpu,
-                      image_processing::color_convert::MemLayout::Planar>);
+                       image_processing::color_convert::MemLayout::Planar>);
+#if HAS_CUDA
+BENCHMARK(
+    BenchmarkRGBA2Gray<image_processing::color_convert::AlgoType::kCuda,
+                       image_processing::color_convert::MemLayout::Planar>);
+
+#endif // HAS_CUDA

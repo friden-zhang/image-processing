@@ -33,6 +33,14 @@ BENCHMARK(
 BENCHMARK(
     BenchmarkRGB2Gray<image_processing::color_convert::AlgoType::kSimdCpu,
                       image_processing::color_convert::MemLayout::Packed>);
+
+#if HAS_CUDA
+
+BENCHMARK(
+    BenchmarkRGB2Gray<image_processing::color_convert::AlgoType::kCuda,
+                      image_processing::color_convert::MemLayout::Packed>);
+#endif
+
 BENCHMARK(
     BenchmarkRGB2Gray<image_processing::color_convert::AlgoType::kNativeCpu,
                       image_processing::color_convert::MemLayout::Planar>);
@@ -42,3 +50,10 @@ BENCHMARK(
 BENCHMARK(
     BenchmarkRGB2Gray<image_processing::color_convert::AlgoType::kSimdCpu,
                       image_processing::color_convert::MemLayout::Planar>);
+
+#if HAS_CUDA
+
+BENCHMARK(
+    BenchmarkRGB2Gray<image_processing::color_convert::AlgoType::kCuda,
+                      image_processing::color_convert::MemLayout::Planar>);
+#endif

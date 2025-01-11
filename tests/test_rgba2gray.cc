@@ -3,6 +3,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <vector>
+#include <thrust/device_vector.h>
 
 static std::vector<unsigned char> read_raw_image(const std::string &filename,
                                                  int width, int height) {
@@ -158,11 +159,22 @@ TEST(RGBA2GrayTest, PackedCUDAConversion) {
   auto input_image = read_raw_image("/tmp/geometric_image.rgba", width, height);
   std::vector<unsigned char> output_image(width * height);
 
+  thrust::device_vector<unsigned char> input_dev(
+      input_image.data(), input_image.data() + 4 * width * height);
+
+  thrust::device_vector<unsigned char> output_dev(output_image.data(), output_image.data() +  width * height);
+
+  unsigned char *input_dev_raw_ptr = thrust::raw_pointer_cast(input_dev.data());
+  unsigned char *output_dev_raw_ptr =
+      thrust::raw_pointer_cast(output_dev.data());
+
   ASSERT_TRUE(image_processing::color_convert::kernels::rgba_2_gray(
-      input_image.data(), output_image.data(), width, height,
+      input_dev_raw_ptr, output_dev_raw_ptr, width, height,
       image_processing::color_convert::AlgoType::kCuda,
       image_processing::color_convert::MemLayout::Packed))
       << "Expected rgba_2_gray to return true but it returned false.";
+
+  thrust::copy(output_dev.begin(), output_dev.end(), output_image.data());
 
   EXPECT_TRUE(std::abs(output_image[100 * width + 100] - 76) <= 2)
       << "Expected " << static_cast<int>(output_image[100 * width + 100])
@@ -185,11 +197,23 @@ TEST(RGBA2GrayTest, PlanarCUDAConversion) {
     input_image_planar[index + 2 * height * width] = input_image[index * 4 + 2];
   }
 
+  thrust::device_vector<unsigned char> input_dev(input_image_planar.data(),
+                                                 input_image_planar.data() +
+                                                     4 * width * height);
+
+  thrust::device_vector<unsigned char> output_dev(output_image.data(), output_image.data() +  width * height);
+
+  unsigned char *input_dev_raw_ptr = thrust::raw_pointer_cast(input_dev.data());
+  unsigned char *output_dev_raw_ptr =
+      thrust::raw_pointer_cast(output_dev.data());
+
   ASSERT_TRUE(image_processing::color_convert::kernels::rgba_2_gray(
-      input_image_planar.data(), output_image.data(), width, height,
+      input_dev_raw_ptr, output_dev_raw_ptr, width, height,
       image_processing::color_convert::AlgoType::kCuda,
       image_processing::color_convert::MemLayout::Planar))
       << "Expected rgba_2_gray to return true but it returned false.";
+
+  thrust::copy(output_dev.begin(), output_dev.end(), output_image.data());
 
   EXPECT_TRUE(std::abs(output_image[100 * width + 100] - 76) <= 2)
       << "Expected " << static_cast<int>(output_image[100 * width + 100])
